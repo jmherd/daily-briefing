@@ -12,14 +12,12 @@ from config import CITY, UNITS, NEWS_TOPICS, MAX_NEWS_ARTICLES_PER_TOPIC, BRIEFI
 
 load_dotenv()
 
-try:
-    anthropic_key = st.secrets.get("ANTHROPIC_API_KEY")
-except:
-    anthropic_key = None
-if not anthropic_key:
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
-
-client = Anthropic(api_key=anthropic_key)
+def get_anthropic_client():
+    try:
+        key = st.secrets["ANTHROPIC_API_KEY"]
+    except:
+        key = os.environ.get("ANTHROPIC_API_KEY")
+    return Anthropic(api_key=key)
 
 def get_weather():
     """Fetch current weather for the configured city."""
@@ -102,6 +100,7 @@ def get_news():
 def generate_briefing(weather_data, news_data):
     """Send all fetched data to Claude and get back a morning briefing."""
     
+    client = get_anthropic_client()  # Add this line
     today = datetime.now().strftime("%A, %B %d, %Y")
     
     # Build a clean text summary of the news to hand to Claude.
