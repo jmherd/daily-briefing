@@ -162,8 +162,9 @@ Keep the total length to around 200-250 words. Be specific, not generic."""
 def run_briefing():
     """Master function that orchestrates everything. The UI calls this one function."""
     weather = get_weather()
-    print("WEATHER DEBUG:", weather)  # Add this line
+    print("WEATHER:", weather)  # Add this line
     news = get_news()
+    print("NEWS:", news)  # Add this line
     briefing = generate_briefing(weather, news)
     
     return {
