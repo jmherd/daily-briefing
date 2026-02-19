@@ -3,22 +3,24 @@
 # It's the "brain" of the app — the UI calls functions from here.
 
 import requests
+import streamlit as st
 from anthropic import Anthropic
 from dotenv import load_dotenv
 import os
 from datetime import datetime
 from config import CITY, UNITS, NEWS_TOPICS, MAX_NEWS_ARTICLES_PER_TOPIC, BRIEFING_TONE
 
-# Load the .env file so os.environ can see your API keys
 load_dotenv()
 
-# Initialize the Anthropic client once at the top.
-# It automatically reads ANTHROPIC_API_KEY from your environment.
-client = Anthropic()
+anthropic_key = st.secrets.get("ANTHROPIC_API_KEY") if hasattr(st, "secrets") else None
+if not anthropic_key:
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+
+client = Anthropic(api_key=anthropic_key)
 
 def get_weather():
     """Fetch current weather for the configured city."""
-    api_key = os.environ["OPENWEATHER_API_KEY"]
+    api_key = st.secrets.get("OPENWEATHER_API_KEY") or os.environ.get("OPENWEATHER_API_KEY")
     url = "https://api.openweathermap.org/data/2.5/weather"
     
     params = {
@@ -49,7 +51,7 @@ def get_weather():
 
 def get_news():
     """Fetch top headlines for each configured topic."""
-    api_key = os.environ["NEWS_API_KEY"]
+    api_key = st.secrets.get("NEWS_API_KEY") or os.environ.get("NEWS_API_KEY")
     url = "https://newsapi.org/v2/everything"
     
     all_articles = {}
