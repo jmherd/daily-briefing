@@ -12,7 +12,10 @@ from config import CITY, UNITS, NEWS_TOPICS, MAX_NEWS_ARTICLES_PER_TOPIC, BRIEFI
 
 load_dotenv()
 
-anthropic_key = st.secrets.get("ANTHROPIC_API_KEY") if hasattr(st, "secrets") else None
+try:
+    anthropic_key = st.secrets.get("ANTHROPIC_API_KEY")
+except:
+    anthropic_key = None
 if not anthropic_key:
     anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
 
@@ -20,7 +23,11 @@ client = Anthropic(api_key=anthropic_key)
 
 def get_weather():
     """Fetch current weather for the configured city."""
-    api_key = st.secrets.get("OPENWEATHER_API_KEY") or os.environ.get("OPENWEATHER_API_KEY")
+    try:
+        api_key = st.secrets.get("OPENWEATHER_API_KEY")
+    except:
+        api_key = None
+    api_key = api_key or os.environ.get("OPENWEATHER_API_KEY")
     url = "https://api.openweathermap.org/data/2.5/weather"
     
     params = {
@@ -51,7 +58,13 @@ def get_weather():
 
 def get_news():
     """Fetch top headlines for each configured topic."""
-    api_key = st.secrets.get("NEWS_API_KEY") or os.environ.get("NEWS_API_KEY")
+    try:
+        api_key = st.secrets.get("NEWS_API_KEY")
+    except:
+        api_key = None
+    api_key = api_key or os.environ.get("NEWS_API_KEY")
+    if not api_key:
+        return {"error": "News API key not found"}
     url = "https://newsapi.org/v2/everything"
     
     all_articles = {}
