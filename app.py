@@ -1,9 +1,13 @@
 # app.py
 # This is the Streamlit UI — the only file that deals with what the user sees.
-# It calls run_briefing() from briefing_engine and displays the results.
+# It calls functions from briefing_engine and displays the results.
 
 import streamlit as st
-from briefing_engine import run_briefing
+from datetime import datetime
+from briefing_engine import (
+    get_weather, get_forecast, get_news,
+    stream_briefing, save_to_history, load_history
+)
 from config import load_profiles, save_profiles
 
 # --- PAGE CONFIGURATION ---
@@ -14,12 +18,15 @@ st.set_page_config(
 )
 
 # --- SESSION STATE ---
-if "briefing_data" not in st.session_state:
-    st.session_state.briefing_data = None
-if "selected_profile_name" not in st.session_state:
-    st.session_state.selected_profile_name = None
+for key, default in [
+    ("briefing_data", None),
+    ("selected_profile_name", None),
+    ("history_view", None),
+]:
+    if key not in st.session_state:
+        st.session_state[key] = default
 
-# --- SIDEBAR: PROFILE MANAGEMENT ---
+# --- SIDEBAR: PROFILE MANAGEMENT + HISTORY ---
 with st.sidebar:
     st.title("👤 Profiles")
     profiles = load_profiles()
@@ -33,10 +40,11 @@ with st.sidebar:
         idx = profile_names.index(st.session_state.selected_profile_name)
         chosen = st.selectbox("Active Profile", profile_names, index=idx)
 
-        # Clear briefing when the user switches profiles
+        # Clear briefing and history view when the user switches profiles
         if chosen != st.session_state.selected_profile_name:
             st.session_state.selected_profile_name = chosen
             st.session_state.briefing_data = None
+            st.session_state.history_view = None
             st.rerun()
 
         profile = profiles[chosen]
@@ -80,7 +88,23 @@ with st.sidebar:
                 save_profiles(profiles)
                 st.session_state.selected_profile_name = list(profiles.keys())[0]
                 st.session_state.briefing_data = None
+                st.session_state.history_view = None
                 st.rerun()
+
+        # Past briefings
+        history = load_history(chosen)
+        if history:
+            st.divider()
+            with st.expander(f"📅 Past Briefings ({len(history)})"):
+                for entry in history:
+                    label = entry["date"]
+                    if st.button(label, key=f"hist_{label}", use_container_width=True):
+                        st.session_state.history_view = entry
+                        st.rerun()
+                if st.session_state.history_view:
+                    if st.button("✕ Close", use_container_width=True):
+                        st.session_state.history_view = None
+                        st.rerun()
     else:
         profile = None
         chosen = None
@@ -121,45 +145,13 @@ with st.sidebar:
                     st.success(f"Profile '{n_name}' created!")
                     st.rerun()
 
-# --- HEADER ---
-st.title("☀️ Your Daily Briefing")
-if profile:
-    st.caption(f"Profile: **{chosen}** · {profile['city']}")
-else:
-    st.caption("Create a profile in the sidebar to get started.")
-st.divider()
 
-# --- GENERATE BUTTON ---
-col1, col2 = st.columns([2, 1])
-with col1:
-    generate_btn = st.button(
-        "🔄 Generate My Briefing",
-        type="primary",
-        use_container_width=True,
-        disabled=(profile is None)
-    )
-with col2:
-    if st.session_state.briefing_data:
-        st.caption(f"Last generated at {st.session_state.briefing_data['generated_at']}")
-
-# --- MAIN LOGIC ---
-if generate_btn and profile:
-    with st.spinner("Fetching weather, news, and generating your briefing..."):
-        try:
-            st.session_state.briefing_data = run_briefing(profile)
-        except Exception as e:
-            st.error(f"Something went wrong: {e}")
-
-# --- DISPLAY RESULTS ---
-if st.session_state.briefing_data:
-    data = st.session_state.briefing_data
-
-    # AI Summary
-    st.subheader("📋 Your Briefing")
-    st.markdown(data["briefing"])
+# --- HELPERS ---
+def display_weather_and_news(data: dict, profile: dict):
+    """Render the weather (current + forecast) and news sections."""
     st.divider()
 
-    # Weather details
+    # Current conditions
     st.subheader("🌤️ Weather Details")
     weather = data["weather"]
     if "error" not in weather:
@@ -168,8 +160,21 @@ if st.session_state.briefing_data:
         col2.metric("Feels Like", f"{weather['feels_like']}°")
         col3.metric("Humidity", f"{weather['humidity']}%")
         col4.metric("Wind", f"{weather['wind_speed']} mph")
+
+        # Today's forecast (5 periods = next ~15 hours)
+        forecast = data.get("forecast", [])
+        if forecast:
+            st.caption("Today's Forecast")
+            cols = st.columns(min(len(forecast), 5))
+            for col, entry in zip(cols, forecast[:5]):
+                with col:
+                    st.markdown(f"**{entry['time']}**")
+                    st.markdown(f"{entry['emoji']} {entry['temp']}°")
+                    if entry["pop"] > 10:
+                        st.caption(f"💧 {entry['pop']}%")
     else:
         st.warning(weather["error"])
+
     st.divider()
 
     # News headlines by topic
@@ -185,3 +190,63 @@ if st.session_state.briefing_data:
                     st.markdown(f"**[{article['title']}]({article['url']})**")
                     st.caption(f"Source: {article['source']}")
                     st.write("")
+
+
+# --- HEADER ---
+st.title("☀️ Your Daily Briefing")
+if profile:
+    st.caption(f"Profile: **{chosen}** · {profile['city']}")
+else:
+    st.caption("Create a profile in the sidebar to get started.")
+st.divider()
+
+# --- HISTORY VIEW MODE ---
+if st.session_state.history_view:
+    view = st.session_state.history_view
+    st.info(f"📅 Viewing briefing from **{view['date']}** · Generated at {view['generated_at']}")
+    st.markdown(view["briefing"])
+    st.stop()  # Don't render anything else while in history mode
+
+# --- GENERATE BUTTON ---
+col1, col2 = st.columns([2, 1])
+with col1:
+    generate_btn = st.button(
+        "🔄 Generate My Briefing",
+        type="primary",
+        use_container_width=True,
+        disabled=(profile is None)
+    )
+with col2:
+    if st.session_state.briefing_data:
+        st.caption(f"Last generated at {st.session_state.briefing_data['generated_at']}")
+
+# --- GENERATION: fetch data, then stream the briefing ---
+if generate_btn and profile:
+    with st.spinner("Fetching weather and news..."):
+        weather = get_weather(profile)
+        forecast = get_forecast(profile)
+        news = get_news(profile)
+
+    st.subheader("📋 Your Briefing")
+    briefing_text = st.write_stream(stream_briefing(weather, forecast, news, profile))
+
+    result = {
+        "weather": weather,
+        "forecast": forecast,
+        "news": news,
+        "briefing": briefing_text,
+        "generated_at": datetime.now().strftime("%I:%M %p")
+    }
+    st.session_state.briefing_data = result
+    save_to_history(chosen, result)
+
+    display_weather_and_news(result, profile)
+
+# --- DISPLAY FROM SESSION STATE (subsequent page loads) ---
+elif st.session_state.briefing_data:
+    data = st.session_state.briefing_data
+
+    st.subheader("📋 Your Briefing")
+    st.markdown(data["briefing"])
+
+    display_weather_and_news(data, profile)
