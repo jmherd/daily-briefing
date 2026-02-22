@@ -43,7 +43,6 @@ def _weather_emoji(description: str) -> str:
     return "🌡️"
 
 
-@st.cache_data(ttl=1800)
 def get_weather(profile: dict) -> dict:
     """Fetch current weather for the profile's city. Cached for 30 minutes."""
     try:
@@ -71,7 +70,6 @@ def get_weather(profile: dict) -> dict:
     }
 
 
-@st.cache_data(ttl=1800)
 def get_forecast(profile: dict) -> list:
     """Fetch today's forecast in 3-hour intervals (next 24 hours). Cached for 30 minutes."""
     try:
@@ -103,7 +101,6 @@ def get_forecast(profile: dict) -> list:
     return entries
 
 
-@st.cache_data(ttl=1800)
 def get_news(profile: dict) -> dict:
     """Fetch top headlines for each topic in the profile. Cached for 30 minutes."""
     try:

@@ -8,6 +8,12 @@ from briefing_engine import (
     get_weather, get_forecast, get_news,
     stream_briefing, save_to_history, load_history
 )
+
+
+@st.cache_data(ttl=1800)
+def fetch_data(profile: dict) -> tuple:
+    """Fetch weather, forecast, and news. Cached for 30 min per profile."""
+    return get_weather(profile), get_forecast(profile), get_news(profile)
 from config import load_profiles, save_profiles
 
 # --- PAGE CONFIGURATION ---
@@ -223,9 +229,7 @@ with col2:
 # --- GENERATION: fetch data, then stream the briefing ---
 if generate_btn and profile:
     with st.spinner("Fetching weather and news..."):
-        weather = get_weather(profile)
-        forecast = get_forecast(profile)
-        news = get_news(profile)
+        weather, forecast, news = fetch_data(profile)
 
     st.subheader("📋 Your Briefing")
     briefing_text = st.write_stream(stream_briefing(weather, forecast, news, profile))
