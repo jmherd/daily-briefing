@@ -1,31 +1,22 @@
 # config.py
-# This file holds all user preferences for the daily briefing.
-# It's the only file you need to edit to personalize your experience.
+# Manages user profiles for the daily briefing app.
+# Edit profiles.json directly, or use the in-app sidebar to create/edit profiles.
 
-# --- LOCATION ---
-# Used to fetch your local weather.
-# Find your city name at openweathermap.org — use the exact spelling they use.
-CITY = "Tampa, US"          # Format: "City, CountryCode"
-UNITS = "imperial"          # "imperial" for Fahrenheit, "metric" for Celsius
+import json
+import os
 
-# --- NEWS TOPICS ---
-# These are the subjects your briefing will pull headlines for.
-# Keep it to 3-5 topics for a clean, readable briefing.
-# Examples: "artificial intelligence", "supply chain", "Formula 1", "real estate"
-NEWS_TOPICS = [
-    "artificial intelligence",
-    "technology",
-    "business",
-    "finance",
-    "money",
-    "claude",
-    "OpenAI",
-    "hiking",
-    "golfing",
-    "University of Florida football",
-]
+PROFILES_FILE = os.path.join(os.path.dirname(__file__), "profiles.json")
 
-# --- BRIEFING PREFERENCES ---
-# Controls the tone and length of your AI-generated summary.
-BRIEFING_TONE = "professional but conversational"
-MAX_NEWS_ARTICLES_PER_TOPIC = 3   # How many headlines to pull per topic
+
+def load_profiles() -> dict:
+    """Load all profiles from profiles.json. Returns empty dict if file missing."""
+    if not os.path.exists(PROFILES_FILE):
+        return {}
+    with open(PROFILES_FILE, "r") as f:
+        return json.load(f)
+
+
+def save_profiles(profiles: dict) -> None:
+    """Save all profiles to profiles.json."""
+    with open(PROFILES_FILE, "w") as f:
+        json.dump(profiles, f, indent=2)

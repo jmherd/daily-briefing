@@ -1,0 +1,20 @@
+{
+  "John": {
+    "city": "Tampa, US",
+    "units": "imperial",
+    "topics": [
+      "artificial intelligence",
+      "technology",
+      "business",
+      "finance",
+      "money",
+      "claude",
+      "OpenAI",
+      "hiking",
+      "golfing",
+      "University of Florida football"
+    ],
+    "briefing_tone": "professional but conversational",
+    "max_articles_per_topic": 3
+  }
+}
